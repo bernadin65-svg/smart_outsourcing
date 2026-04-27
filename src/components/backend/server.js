@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 5000;
 
 // ── Middlewares globaux ──
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174" ]
+  origin: ["http://localhost:5173", "http://localhost:5174", "https://externalisation-bpo.vercel.app"],
+  credentials: true
 }));
 app.use(express.json()); // permet de lire le JSON des requêtes
 
