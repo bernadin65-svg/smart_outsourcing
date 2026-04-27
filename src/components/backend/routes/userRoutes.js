@@ -29,8 +29,9 @@ router.get("/all", protect, adminOnly, getAllUsers);
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "ybernadin65@gmail.com",  // ← corrigé
-    pass: "ftop euyb koha epob",    // ← déjà bon
+    
+user: process.env.GMAIL_USER,
+pass: process.env.GMAIL_PASS,
   },
 });
 
@@ -41,7 +42,8 @@ router.post("/send-email", async (req, res) => {
   }
   try {
     await transporter.sendMail({
-      from: '"SmartFlow Outsourcing" <ybernadin65@gmail.com>',  // ← corrigé
+      
+from: `"SmartFlow Outsourcing" <${process.env.GMAIL_USER}>`,
       to,
       subject,
       text: body,
