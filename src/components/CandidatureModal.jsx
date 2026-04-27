@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import assets from '../assets/assets';
 import toast, { Toaster } from 'react-hot-toast';
 
-const API = "http://localhost:5000/api/users";
+
+const API = "https://smart-outsourcing.onrender.com/api/users";
 const NOTIFY_EMAIL = "ybernadin65@gmail.com";
 const WEB3FORMS_KEY = "62f19032-2024-4fd3-b234-62c7cee06c5b";
 
