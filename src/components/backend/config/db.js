@@ -10,7 +10,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   ssl: {
-    rejectUnauthorized: true,  // ✅ SSL obligatoire pour TiDB Cloud
+    // ✅ Après
+rejectUnauthorized: false,  // ✅ SSL obligatoire pour TiDB Cloud
     minVersion: "TLSv1.2"
   }
 });
