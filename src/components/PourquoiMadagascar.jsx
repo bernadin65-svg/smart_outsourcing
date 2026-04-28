@@ -86,11 +86,7 @@ function useInView(threshold = 0.15) {
 function Card({ card, index, visible }) {
   return (
     <div
-      className="
-        flex flex-col rounded-[18px] p-8 border transition-all duration-300
-        bg-white border-gray-200 hover:border-gray-300
-        dark:bg-[#161b27] dark:border-white/[0.07] dark:hover:border-white/[0.15]
-      "
+      className="flex flex-col rounded-[18px] p-8 border transition-all duration-300 bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(32px)",
@@ -117,7 +113,7 @@ function Card({ card, index, visible }) {
 
       {/* Title */}
       <h3
-        className="text-[18px] font-bold leading-snug mb-3 text-gray-800 dark:text-[#e8eaf0]"
+        className="text-[18px] font-bold leading-snug mb-3 text-gray-800"
         style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
       >
         {card.title}
@@ -125,7 +121,7 @@ function Card({ card, index, visible }) {
 
       {/* Description */}
       <p
-        className="text-sm leading-relaxed mb-7 flex-1 text-gray-500 dark:text-[#6b7a90]"
+        className="text-sm leading-relaxed mb-7 flex-1 text-gray-500"
         style={{ fontFamily: "'Lato', sans-serif" }}
       >
         {card.desc}
@@ -198,12 +194,7 @@ export default function PourquoiMadagascar() {
 
         {/* Map banner */}
         <div
-          className="
-            max-w-[1040px] mx-auto mt-12 flex flex-col sm:flex-row items-center gap-8
-            rounded-[20px] p-8 border transition-colors duration-300
-            bg-white border-gray-200
-            dark:bg-[#161b27] dark:border-white/[0.07]
-          "
+          className="max-w-[1040px] mx-auto mt-12 flex flex-col sm:flex-row items-center gap-8 rounded-[20px] p-8 border transition-colors duration-300 bg-white border-gray-200 shadow-sm"
           style={{
             opacity: visible ? 1 : 0,
             transform: visible ? "translateY(0)" : "translateY(24px)",
@@ -225,13 +216,13 @@ export default function PourquoiMadagascar() {
           {/* Text */}
           <div>
             <h4
-              className="text-xl font-bold mb-2 text-gray-800 dark:text-[#e8eaf0]"
+              className="text-xl font-bold mb-2 text-gray-800"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Madagascar en chiffres
             </h4>
             <p
-              className="text-sm leading-relaxed text-gray-500 dark:text-[#6b7a90]"
+              className="text-sm leading-relaxed text-gray-500"
               style={{ fontFamily: "'Lato', sans-serif" }}
             >
               Une destination BPO en plein essor, avec un vivier de talents francophones,
@@ -254,7 +245,7 @@ export default function PourquoiMadagascar() {
                     {s.val}
                   </div>
                   <div
-                    className="text-xs mt-0.5 text-gray-400 dark:text-[#4a5568]"
+                    className="text-xs mt-0.5 text-gray-400"
                     style={{ fontFamily: "'Lato', sans-serif" }}
                   >
                     {s.label}
