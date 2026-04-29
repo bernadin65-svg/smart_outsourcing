@@ -893,13 +893,20 @@ function UserDashboard({ user, onSubmitBpo, loadingBpo, onClose }) {
 
 /* ══════════════════════════════════════════
    FONCTIONS EMAIL
+   ✅ sendEmailToUser → Vercel + Resend
+   ✅ sendEmailToAdmin → Web3Forms (inchangé)
 ══════════════════════════════════════════ */
 async function sendEmailToUser({ userEmail, userName, subject, body }) {
   try {
-    const res = await fetch(`${API}/send-email`, {
+    const res = await fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: userEmail, subject, body }),
+      body: JSON.stringify({
+        name:    userName,
+        email:   userEmail,
+        subject: subject,
+        message: body,
+      }),
     });
     const d = await res.json();
     return d.success === true;
@@ -940,10 +947,8 @@ export default function CandidatureModal({ isOpen, onClose }) {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [connectedUser, setConnectedUser] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
-  // ✅ AJOUT : message d'erreur email dynamique
   const [emailErrorMsg, setEmailErrorMsg] = useState("Adresse e-mail invalide");
 
-  // ✅ MODIFIÉ : reset du message quand l'utilisateur modifie l'email
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
@@ -975,7 +980,6 @@ export default function CandidatureModal({ isOpen, onClose }) {
       });
       const data = await res.json();
 
-      // ✅ MODIFIÉ : message précis pour email déjà utilisé
       if (res.status === 409) {
         setEmailErrorMsg("Cet e-mail est déjà utilisé.");
         setErrors(er => ({ ...er, email: true }));
@@ -1141,11 +1145,7 @@ Madagascar · Antsiranana`;
       }
 
       setForm(f => ({ ...f, nom: data.user.nom, prenom: data.user.prenom, email: data.user.email }));
-      setConnectedUser({
-        ...data.user,
-        bpoData,
-        candidatureStatus,
-      });
+      setConnectedUser({ ...data.user, bpoData, candidatureStatus });
       setLoadingSubmit(false);
       setView("dashboard");
 
@@ -1277,7 +1277,7 @@ Madagascar · Antsiranana`;
       setSelectedCountry(COUNTRIES[0]);
       setShowPassword(false); setShowLoginPassword(false);
       setLoadingSubmit(false); setVerifyCode("");
-      setEmailErrorMsg("Adresse e-mail invalide"); // ✅ reset au fermeture
+      setEmailErrorMsg("Adresse e-mail invalide");
     }, 300);
   };
 
@@ -1362,7 +1362,6 @@ Madagascar · Antsiranana`;
               <div style={{ ...styles.field, marginBottom: "14px" }}>
                 <Label>Adresse e-mail</Label>
                 <input className="sf-input" name="email" type="email" value={form.email} onChange={handleChange} placeholder="jean.rakoto@email.com" style={inputStyle(errors.email)} />
-                {/* ✅ MODIFIÉ : message dynamique */}
                 {errors.email && <span style={errText}>{emailErrorMsg}</span>}
               </div>
 
