@@ -2,26 +2,29 @@ const db         = require("../config/db");
 const bcrypt     = require("bcryptjs");
 const jwt        = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
- 
-// ── Transporter Nodemailer ──
+
+// ── Transporter Nodemailer ── CORRIGÉ : force IPv4
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  family: 4,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
   },
 });
- 
+
 // ════════════════════════════════════════
 //  INSCRIPTION
 // ════════════════════════════════════════
 exports.register = async (req, res) => {
   const { nom, prenom, email, password } = req.body;
- 
+
   if (!nom || !prenom || !email || !password) {
     return res.status(400).json({ message: "Tous les champs sont requis." });
   }
- 
+
   try {
     const [existing] = await db.query(
       "SELECT id FROM users WHERE email = ?",
@@ -30,62 +33,58 @@ exports.register = async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ message: "Email déjà utilisé." });
     }
- 
+
     const hashed = await bcrypt.hash(password, 12);
- 
+
     const [result] = await db.query(
       `INSERT INTO users (nom, prenom, email, password) VALUES (?, ?, ?, ?)`,
       [nom, prenom, email, hashed]
     );
- 
+
     res.status(201).json({
       message: "Compte créé avec succès !",
       userId: result.insertId,
     });
- 
-    // NOTE : L'email de vérification (code 6 chiffres) est envoyé
-    // directement par le frontend via la route /send-email ci-dessous.
-    // On n'envoie plus d'email de confirmation ici pour éviter les doublons.
- 
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  CONNEXION
 // ════════════════════════════════════════
 exports.login = async (req, res) => {
   const { email, password } = req.body;
- 
+
   if (!email || !password) {
     return res.status(400).json({ message: "Email et mot de passe requis." });
   }
- 
+
   try {
     const [rows] = await db.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
     );
- 
+
     if (rows.length === 0) {
       return res.status(401).json({ message: "Identifiants incorrects." });
     }
- 
+
     const user = rows[0];
- 
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "Identifiants incorrects." });
     }
- 
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
- 
+
     res.json({
       message: "Connexion réussie !",
       token,
@@ -97,41 +96,32 @@ exports.login = async (req, res) => {
         role:   user.role,
       },
     });
- 
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  ENVOYER UN EMAIL TRANSACTIONNEL
-//  ─────────────────────────────────────
-//  Utilisé par le frontend pour :
-//    • RÈGLE 1 : envoyer le code de vérification à l'utilisateur
-//    • RÈGLE 3 : envoyer la confirmation de candidature BPO à l'utilisateur
-//
-//  ⚠️  Route publique (pas de middleware auth)
-//      car appelée avant/pendant l'inscription.
 // ════════════════════════════════════════
 exports.sendEmail = async (req, res) => {
   const { to, subject, body } = req.body;
- 
-  // Validation basique
+
   if (!to || !subject || !body) {
     return res.status(400).json({ success: false, message: "Champs to, subject et body requis." });
   }
- 
-  // Sécurité : on n'accepte que des adresses email valides
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(to)) {
     return res.status(400).json({ success: false, message: "Adresse e-mail invalide." });
   }
- 
+
   try {
     await transporter.sendMail({
       from:    `"SmartFlow Outsourcing" <${process.env.GMAIL_USER}>`,
-      to:      to,        // ← email EXACT de l'utilisateur, jamais le vôtre
+      to:      to,
       subject: subject,
       text:    body,
       html:    `
@@ -149,40 +139,40 @@ exports.sendEmail = async (req, res) => {
         </div>
       `,
     });
- 
+
     console.log(`✅ Email envoyé à : ${to} | Sujet : ${subject}`);
     res.json({ success: true, message: "Email envoyé avec succès." });
- 
+
   } catch (err) {
     console.error("❌ Erreur envoi email :", err.message);
     res.status(500).json({ success: false, message: "Erreur lors de l'envoi de l'email." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  SOUMETTRE UNE CANDIDATURE
 // ════════════════════════════════════════
 exports.soumettreCandidature = async (req, res) => {
   const userId = req.user.id;
   const { service, budget, delai, besoin } = req.body;
- 
+
   try {
     const [result] = await db.query(
       `INSERT INTO candidatures (user_id, service, budget, delai, besoin) VALUES (?, ?, ?, ?, ?)`,
       [userId, service, budget, delai, besoin]
     );
- 
+
     res.status(201).json({
       message: "Candidature soumise avec succès !",
       candidatureId: result.insertId,
     });
- 
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  VOIR MA CANDIDATURE
 // ════════════════════════════════════════
@@ -201,42 +191,42 @@ exports.getCandidature = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  RÉINITIALISATION MOT DE PASSE DIRECTE
 // ════════════════════════════════════════
 exports.resetPasswordDirect = async (req, res) => {
   const { email, newPassword } = req.body;
- 
+
   if (!email || !newPassword) {
     return res.status(400).json({ message: "Email et nouveau mot de passe requis." });
   }
- 
+
   try {
     const [rows] = await db.query(
       "SELECT id FROM users WHERE email = ?",
       [email.trim().toLowerCase()]
     );
- 
+
     if (rows.length === 0) {
       return res.status(404).json({ message: "Aucun compte trouvé avec cet e-mail." });
     }
- 
+
     const hashed = await bcrypt.hash(newPassword, 12);
- 
+
     await db.query(
       "UPDATE users SET password = ? WHERE email = ?",
       [hashed, email.trim().toLowerCase()]
     );
- 
+
     res.json({ message: "Mot de passe réinitialisé avec succès." });
- 
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  VOIR MON PROFIL
 // ════════════════════════════════════════
@@ -251,7 +241,7 @@ exports.getProfile = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 };
- 
+
 // ════════════════════════════════════════
 //  TOUS LES USERS (admin seulement)
 // ════════════════════════════════════════
