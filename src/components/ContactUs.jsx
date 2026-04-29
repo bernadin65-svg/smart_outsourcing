@@ -18,8 +18,7 @@ function ContactUs() {
 
         try {
             const response = await fetch(
-                "https://smart-outsourcing.onrender.com/api/users/contact",
-                {
+"https://smart-outsourcing.onrender.com/api/users/send-email",                {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
