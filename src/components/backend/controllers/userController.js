@@ -38,15 +38,15 @@ exports.register = async (req, res) => {
       [nom, prenom, email, hashed]
     );
 
-    // ✅ Email de confirmation envoyé à l'utilisateur
+    // ✅ Email de confirmation à l'utilisateur
     await transporter.sendMail({
       from: `"SmartFlow Outsourcing" <${process.env.GMAIL_USER}>`,
-      to: email, // ← email de l'utilisateur inscrit
+      to: email,
       subject: "✅ Bienvenue sur SmartFlow — Inscription confirmée",
       html: `
         <h2>Bienvenue ${nom} ${prenom} !</h2>
         <p>Votre compte a été créé avec succès sur SmartFlow Outsourcing.</p>
-        <p>Vous pouvez maintenant vous connecter avec votre email : <strong>${email}</strong></p>
+        <p>Vous pouvez maintenant vous connecter avec : <strong>${email}</strong></p>
         <br/>
         <p>Cordialement,</p>
         <p><strong>L'équipe SmartFlow Outsourcing</strong></p>
