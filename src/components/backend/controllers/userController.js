@@ -1,21 +1,28 @@
-const db      = require("../config/db");
-const bcrypt  = require("bcryptjs");
-const jwt     = require("jsonwebtoken");
+const db         = require("../config/db");
+const bcrypt     = require("bcryptjs");
+const jwt        = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
+// ── Transporter Nodemailer ──
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
 
 // ════════════════════════════════════════
 //  INSCRIPTION
 // ════════════════════════════════════════
 exports.register = async (req, res) => {
-  // 1. On récupère ce que l'utilisateur a envoyé
   const { nom, prenom, email, password } = req.body;
 
-  // 2. On vérifie que tous les champs sont remplis
   if (!nom || !prenom || !email || !password) {
     return res.status(400).json({ message: "Tous les champs sont requis." });
   }
 
   try {
-    // 3. On vérifie si l'email existe déjà dans MySQL
     const [existing] = await db.query(
       "SELECT id FROM users WHERE email = ?",
       [email]
@@ -24,18 +31,28 @@ exports.register = async (req, res) => {
       return res.status(409).json({ message: "Email déjà utilisé." });
     }
 
-    // 4. On chiffre le mot de passe (jamais stocker en clair !)
-    // bcrypt transforme "monMotDePasse" en "$2a$12$xK9..."
     const hashed = await bcrypt.hash(password, 12);
 
-    // 5. On insère l'utilisateur dans MySQL
     const [result] = await db.query(
-      `INSERT INTO users (nom, prenom, email, password)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO users (nom, prenom, email, password) VALUES (?, ?, ?, ?)`,
       [nom, prenom, email, hashed]
     );
 
-    // 6. On répond avec succès
+    // ✅ Email de confirmation envoyé à l'utilisateur
+    await transporter.sendMail({
+      from: `"SmartFlow Outsourcing" <${process.env.GMAIL_USER}>`,
+      to: email, // ← email de l'utilisateur inscrit
+      subject: "✅ Bienvenue sur SmartFlow — Inscription confirmée",
+      html: `
+        <h2>Bienvenue ${nom} ${prenom} !</h2>
+        <p>Votre compte a été créé avec succès sur SmartFlow Outsourcing.</p>
+        <p>Vous pouvez maintenant vous connecter avec votre email : <strong>${email}</strong></p>
+        <br/>
+        <p>Cordialement,</p>
+        <p><strong>L'équipe SmartFlow Outsourcing</strong></p>
+      `,
+    });
+
     res.status(201).json({
       message: "Compte créé avec succès !",
       userId: result.insertId,
@@ -58,34 +75,28 @@ exports.login = async (req, res) => {
   }
 
   try {
-    // 1. On cherche l'utilisateur par email dans MySQL
     const [rows] = await db.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
     );
 
-    // 2. Si aucun résultat → email incorrect
     if (rows.length === 0) {
       return res.status(401).json({ message: "Identifiants incorrects." });
     }
 
     const user = rows[0];
 
-    // 3. On compare le mot de passe tapé avec le hash stocké
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "Identifiants incorrects." });
     }
 
-    // 4. On crée un token JWT (carte d'identité numérique)
-    // Ce token prouve que l'utilisateur est bien connecté
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" } // valable 7 jours
+      { expiresIn: "7d" }
     );
 
-    // 5. On renvoie le token et les infos de l'utilisateur
     res.json({
       message: "Connexion réussie !",
       token,
@@ -108,14 +119,12 @@ exports.login = async (req, res) => {
 //  SOUMETTRE UNE CANDIDATURE
 // ════════════════════════════════════════
 exports.soumettreCandidature = async (req, res) => {
-  // req.user.id vient du middleware auth (le token)
   const userId = req.user.id;
   const { service, budget, delai, besoin } = req.body;
 
   try {
     const [result] = await db.query(
-      `INSERT INTO candidatures (user_id, service, budget, delai, besoin)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO candidatures (user_id, service, budget, delai, besoin) VALUES (?, ?, ?, ?, ?)`,
       [userId, service, budget, delai, besoin]
     );
 
