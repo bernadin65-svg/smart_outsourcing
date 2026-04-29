@@ -892,22 +892,8 @@ function UserDashboard({ user, onSubmitBpo, loadingBpo, onClose }) {
 }
 
 /* ══════════════════════════════════════════
-   ★ FONCTIONS EMAIL — CORRIGÉES ★
-
-   RÈGLE 1 : Code de vérification
-             → Utilisateur (backend Nodemailer)
-
-   RÈGLE 2 : Notification inscription
-             → Admin ybernadin65 (Web3Forms)
-
-   RÈGLE 3 : Confirmation candidature BPO
-             → Utilisateur ET admin (les deux)
-
-   RÈGLE 4 : Alerte candidature BPO
-             → Admin ybernadin65 (Web3Forms)
+   FONCTIONS EMAIL
 ══════════════════════════════════════════ */
-
-// ── Email vers l'utilisateur via votre backend Nodemailer ──
 async function sendEmailToUser({ userEmail, userName, subject, body }) {
   try {
     const res = await fetch(`${API}/send-email`, {
@@ -922,7 +908,6 @@ async function sendEmailToUser({ userEmail, userName, subject, body }) {
   }
 }
 
-// ── Email vers l'admin via Web3Forms (arrive toujours chez ybernadin65) ──
 async function sendEmailToAdmin({ fromName, fromEmail, subject, body }) {
   const fd = new FormData();
   fd.append("access_key", WEB3FORMS_KEY);
@@ -930,8 +915,6 @@ async function sendEmailToAdmin({ fromName, fromEmail, subject, body }) {
   fd.append("name",       fromName);
   fd.append("email",      fromEmail);
   fd.append("message",    body);
-  // ⚠️ Web3Forms envoie TOUJOURS au compte lié à la clé API (ybernadin65)
-  // Ne pas ajouter de champ "to" — il est ignoré par Web3Forms
   try {
     const r = await fetch("https://api.web3forms.com/submit", { method: "POST", body: fd });
     const d = await r.json();
@@ -957,18 +940,17 @@ export default function CandidatureModal({ isOpen, onClose }) {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [connectedUser, setConnectedUser] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
+  // ✅ AJOUT : message d'erreur email dynamique
+  const [emailErrorMsg, setEmailErrorMsg] = useState("Adresse e-mail invalide");
 
+  // ✅ MODIFIÉ : reset du message quand l'utilisateur modifie l'email
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
     setErrors(er => ({ ...er, [name]: false }));
+    if (name === "email") setEmailErrorMsg("Adresse e-mail invalide");
   };
 
-  /* ────────────────────────────────────────
-     INSCRIPTION
-     RÈGLE 1 : code → utilisateur (backend)
-     RÈGLE 2 : notif → admin (Web3Forms)
-  ──────────────────────────────────────── */
   const handleSubmitRegister = async () => {
     const newErrors = {};
     if (!form.nom.trim())       newErrors.nom = true;
@@ -992,7 +974,10 @@ export default function CandidatureModal({ isOpen, onClose }) {
         }),
       });
       const data = await res.json();
+
+      // ✅ MODIFIÉ : message précis pour email déjà utilisé
       if (res.status === 409) {
+        setEmailErrorMsg("Cet e-mail est déjà utilisé.");
         setErrors(er => ({ ...er, email: true }));
         toast.error("Cet e-mail est déjà utilisé.");
         setLoadingSubmit(false);
@@ -1003,7 +988,7 @@ export default function CandidatureModal({ isOpen, onClose }) {
         setLoadingSubmit(false);
         return;
       }
-    } catch { /* Continuer même si le backend est injoignable (démo) */ }
+    } catch { /* Continuer même si le backend est injoignable */ }
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
     setVerifyCode(code);
@@ -1026,7 +1011,6 @@ Cordialement,
 L'équipe SmartFlow Outsourcing
 Madagascar · Antsiranana`;
 
-    // ── RÈGLE 1 : Code de vérification → utilisateur (backend Nodemailer) ──
     const sentToUser = await sendEmailToUser({
       userEmail: userEmailClean,
       userName:  form.prenom,
@@ -1034,7 +1018,6 @@ Madagascar · Antsiranana`;
       body:      verifyEmailBody,
     });
 
-    // ── RÈGLE 2 : Notification inscription → admin ybernadin65 (Web3Forms) ──
     await sendEmailToAdmin({
       fromName:  `${form.prenom} ${form.nom}`,
       fromEmail: userEmailClean,
@@ -1059,7 +1042,6 @@ Madagascar · Antsiranana`;
 
     const userEmailClean = form.email.trim().toLowerCase();
 
-    // ── RÈGLE 1 : Renvoi code → utilisateur (backend Nodemailer) ──
     const sent = await sendEmailToUser({
       userEmail: userEmailClean,
       userName:  form.prenom,
@@ -1173,11 +1155,6 @@ Madagascar · Antsiranana`;
     }
   };
 
-  /* ────────────────────────────────────────
-     SOUMISSION CANDIDATURE BPO
-     RÈGLE 3 : confirmation → utilisateur (backend) + admin (Web3Forms)
-     RÈGLE 4 : alerte → admin ybernadin65 (Web3Forms) [inclus dans RÈGLE 3]
-  ──────────────────────────────────────── */
   const handleSubmitBpo = async (bpoData) => {
     setLoadingSubmit(true);
 
@@ -1202,7 +1179,6 @@ Madagascar · Antsiranana`;
     const userNom     = connectedUser?.nom    || form.nom    || "";
     const userTel     = `${selectedCountry.dial} ${form.telephone}`;
 
-    // Sauvegarde backend
     try {
       const token = localStorage.getItem("token");
       await fetch(`${API}/candidature`, {
@@ -1217,7 +1193,6 @@ Madagascar · Antsiranana`;
       });
     } catch { /* fallback silencieux */ }
 
-    // ── RÈGLE 4 : Alerte candidature BPO → admin ybernadin65 (Web3Forms) ──
     const adminBody = `
 🆕 NOUVELLE CANDIDATURE BPO — SmartFlow Outsourcing
 
@@ -1245,7 +1220,6 @@ Soumis le ${new Date().toLocaleDateString("fr-FR")} via SmartFlow Outsourcing
       body:      adminBody,
     });
 
-    // ── RÈGLE 3 : Confirmation candidature BPO → utilisateur (backend Nodemailer) ──
     const userConfirmBody = `Bonjour ${userPrenom},
 
 Nous avons bien reçu votre candidature BPO sur SmartFlow Outsourcing.
@@ -1259,8 +1233,6 @@ ${bpoData.besoin ? `Besoin      : ${bpoData.besoin}` : ""}
 ─────────────────────────────────────────
 
 Notre équipe examinera votre dossier et vous répondra dans les 48 heures ouvrées.
-
-Vous pouvez suivre l'état de votre candidature en vous connectant à votre espace personnel sur notre plateforme.
 
 Cordialement,
 L'équipe SmartFlow Outsourcing
@@ -1305,6 +1277,7 @@ Madagascar · Antsiranana`;
       setSelectedCountry(COUNTRIES[0]);
       setShowPassword(false); setShowLoginPassword(false);
       setLoadingSubmit(false); setVerifyCode("");
+      setEmailErrorMsg("Adresse e-mail invalide"); // ✅ reset au fermeture
     }, 300);
   };
 
@@ -1389,7 +1362,8 @@ Madagascar · Antsiranana`;
               <div style={{ ...styles.field, marginBottom: "14px" }}>
                 <Label>Adresse e-mail</Label>
                 <input className="sf-input" name="email" type="email" value={form.email} onChange={handleChange} placeholder="jean.rakoto@email.com" style={inputStyle(errors.email)} />
-                {errors.email && <span style={errText}>Adresse e-mail invalide</span>}
+                {/* ✅ MODIFIÉ : message dynamique */}
+                {errors.email && <span style={errText}>{emailErrorMsg}</span>}
               </div>
 
               <div style={{ ...styles.field, marginBottom: "24px" }}>
