@@ -3,12 +3,15 @@ const bcrypt     = require("bcryptjs");
 const jwt        = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
  
-// ── Transporter Nodemailer ── CORRIGÉ : force IPv4 + port 465
+// ── Transporter Nodemailer ── port 587 TLS pour Render
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  family: 4,
+  port: 587,
+  secure: false,
+  requireTLS: true,
+  tls: {
+    rejectUnauthorized: false
+  },
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
