@@ -17,29 +17,30 @@ function ContactUs() {
         const message = formData.get("message");
 
         try {
-            const response = await fetch(
-"https://smart-outsourcing.onrender.com/api/users/send-email",                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        to:      "ybernadin65@gmail.com",
-                        subject: `Nouveau message de ${name}`,
-                        body:    `Nom : ${name}\nEmail : ${email}\n\nMessage :\n${message}`
-                    })
-                }
-            );
+            const response = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer re_VfSHgCGn_JqFvprvS31wNhAwWG9DpcAD2"
+                },
+                body: JSON.stringify({
+                    from:    "SmartFlow Outsourcing <onboarding@resend.dev>",
+                    to:      ["ybernadin65@gmail.com"],
+                    subject: `Nouveau message de ${name}`,
+                    html:    `<p><b>Nom :</b> ${name}</p><p><b>Email :</b> ${email}</p><p><b>Message :</b><br/>${message}</p>`
+                })
+            });
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (response.ok) {
                 toast.success("Message envoyé avec succès ! ✅");
                 event.target.reset();
             } else {
-                toast.error(data.message || "Erreur lors de l'envoi");
+                const err = await response.json();
+                toast.error(err.message || "Erreur lors de l'envoi");
             }
 
         } catch (error) {
-            toast.error("Serveur en cours de démarrage, réessayez dans 30 secondes...");
+            toast.error("Erreur réseau, réessayez.");
         } finally {
             setLoading(false);
         }
