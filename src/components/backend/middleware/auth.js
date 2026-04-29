@@ -18,10 +18,10 @@ exports.protect = (req, res, next) => {
   try {
     // On vérifie que le token est valide et non expiré
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // On attache les infos de l'utilisateur à la requête
     req.user = decoded; // { id, email, role }
-    
+
     next(); // on passe à la suite
   } catch {
     res.status(401).json({ message: "Token invalide ou expiré." });
