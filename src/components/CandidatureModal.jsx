@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import assets from '../assets/assets';
 import toast, { Toaster } from 'react-hot-toast';
 
-
 const API = "https://smart-outsourcing.onrender.com/api/users";
 const NOTIFY_EMAIL = "ybernadin65@gmail.com";
 const WEB3FORMS_KEY = "62f19032-2024-4fd3-b234-62c7cee06c5b";
@@ -154,7 +153,7 @@ function CountrySelector({ selected, onSelect, hasError }) {
 }
 
 /* ══════════════════════════════════════════
-   ÉTAPE VÉRIFICATION EMAIL (code à 6 chiffres)
+   ÉTAPE VÉRIFICATION EMAIL
 ══════════════════════════════════════════ */
 function VerifyEmailView({ email, code, onVerified, onResend, onBack }) {
   const [input, setInput]       = useState(["", "", "", "", "", ""]);
@@ -680,7 +679,7 @@ function BpoPage({ prenom, onSubmit, loading }) {
 }
 
 /* ══════════════════════════════════════════
-   ★ VUE MESSAGERIE STYLE FACEBOOK ★
+   VUE MESSAGERIE
 ══════════════════════════════════════════ */
 function MessagesView({ user, onClose }) {
   const status = user.candidatureStatus || "pending";
@@ -893,11 +892,22 @@ function UserDashboard({ user, onSubmitBpo, loadingBpo, onClose }) {
 }
 
 /* ══════════════════════════════════════════
-   ★ FONCTIONS EMAIL — VERSION CORRIGÉE ★
-   sendEmailToUser → passe par votre backend
-   pour envoyer à l'adresse exacte de chaque
-   utilisateur via Nodemailer
+   ★ FONCTIONS EMAIL — CORRIGÉES ★
+
+   RÈGLE 1 : Code de vérification
+             → Utilisateur (backend Nodemailer)
+
+   RÈGLE 2 : Notification inscription
+             → Admin ybernadin65 (Web3Forms)
+
+   RÈGLE 3 : Confirmation candidature BPO
+             → Utilisateur ET admin (les deux)
+
+   RÈGLE 4 : Alerte candidature BPO
+             → Admin ybernadin65 (Web3Forms)
 ══════════════════════════════════════════ */
+
+// ── Email vers l'utilisateur via votre backend Nodemailer ──
 async function sendEmailToUser({ userEmail, userName, subject, body }) {
   try {
     const res = await fetch(`${API}/send-email`, {
@@ -906,12 +916,13 @@ async function sendEmailToUser({ userEmail, userName, subject, body }) {
       body: JSON.stringify({ to: userEmail, subject, body }),
     });
     const d = await res.json();
-    return d.success;
+    return d.success === true;
   } catch {
     return false;
   }
 }
 
+// ── Email vers l'admin via Web3Forms (arrive toujours chez ybernadin65) ──
 async function sendEmailToAdmin({ fromName, fromEmail, subject, body }) {
   const fd = new FormData();
   fd.append("access_key", WEB3FORMS_KEY);
@@ -919,27 +930,12 @@ async function sendEmailToAdmin({ fromName, fromEmail, subject, body }) {
   fd.append("name",       fromName);
   fd.append("email",      fromEmail);
   fd.append("message",    body);
+  // ⚠️ Web3Forms envoie TOUJOURS au compte lié à la clé API (ybernadin65)
+  // Ne pas ajouter de champ "to" — il est ignoré par Web3Forms
   try {
     const r = await fetch("https://api.web3forms.com/submit", { method: "POST", body: fd });
     const d = await r.json();
-    return d.success;
-  } catch {
-    return false;
-  }
-}
-
-async function sendEmail({ to, subject, body, fromName, fromEmail }) {
-  const fd = new FormData();
-  fd.append("access_key", WEB3FORMS_KEY);
-  fd.append("subject",    subject);
-  fd.append("name",       fromName);
-  fd.append("email",      fromEmail);
-  fd.append("message",    body);
-  if (to) fd.append("to", to);
-  try {
-    const r = await fetch("https://api.web3forms.com/submit", { method: "POST", body: fd });
-    const d = await r.json();
-    return d.success;
+    return d.success === true;
   } catch {
     return false;
   }
@@ -968,12 +964,17 @@ export default function CandidatureModal({ isOpen, onClose }) {
     setErrors(er => ({ ...er, [name]: false }));
   };
 
+  /* ────────────────────────────────────────
+     INSCRIPTION
+     RÈGLE 1 : code → utilisateur (backend)
+     RÈGLE 2 : notif → admin (Web3Forms)
+  ──────────────────────────────────────── */
   const handleSubmitRegister = async () => {
     const newErrors = {};
     if (!form.nom.trim())       newErrors.nom = true;
     if (!form.prenom.trim())    newErrors.prenom = true;
     if (!form.telephone.trim()) newErrors.telephone = true;
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) newErrors.email = true;
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) newErrors.email = true;
     if (!form.password.trim())  newErrors.password = true;
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
@@ -1009,28 +1010,46 @@ export default function CandidatureModal({ isOpen, onClose }) {
 
     const userEmailClean = form.email.trim().toLowerCase();
 
-    const emailBody = `Bonjour ${form.prenom},\n\nMerci de vous être inscrit(e) sur SmartFlow Outsourcing.\n\nVotre code de vérification est :\n\n${code}\n\nCe code est valable 10 minutes. Ne le partagez avec personne.\n\nSi vous n'avez pas effectué cette inscription, ignorez cet e-mail.\n\nCordialement,\nL'équipe SmartFlow Outsourcing`;
+    const verifyEmailBody = `Bonjour ${form.prenom},
 
-    const sent = await sendEmailToUser({
+Merci de vous être inscrit(e) sur SmartFlow Outsourcing — la plateforme BPO de référence à Madagascar.
+
+Votre code de vérification est :
+
+${code}
+
+Ce code est valable 10 minutes. Ne le partagez avec personne.
+
+Si vous n'avez pas effectué cette inscription, ignorez cet e-mail.
+
+Cordialement,
+L'équipe SmartFlow Outsourcing
+Madagascar · Antsiranana`;
+
+    // ── RÈGLE 1 : Code de vérification → utilisateur (backend Nodemailer) ──
+    const sentToUser = await sendEmailToUser({
       userEmail: userEmailClean,
       userName:  form.prenom,
       subject:   "🔐 Votre code de vérification SmartFlow",
-      body:      emailBody,
+      body:      verifyEmailBody,
     });
 
-    if (!sent) {
-      await sendEmailToAdmin({
-        fromName:  `Inscription ${form.prenom} ${form.nom}`,
-        fromEmail: userEmailClean,
-        subject:   `🔐 Code vérification pour ${userEmailClean} : ${code}`,
-        body:      `Code de vérification pour ${userEmailClean} : ${code}\n\n${emailBody}`,
-      });
-      toast.error("L'envoi direct a échoué. Vérifiez votre connexion ou consultez vos spams.");
-    } else {
-      toast.success(`Code envoyé à ${userEmailClean} !`);
-    }
+    // ── RÈGLE 2 : Notification inscription → admin ybernadin65 (Web3Forms) ──
+    await sendEmailToAdmin({
+      fromName:  `${form.prenom} ${form.nom}`,
+      fromEmail: userEmailClean,
+      subject:   `🔔 Nouvelle inscription — ${form.prenom} ${form.nom}`,
+      body:      `Nouvelle inscription sur SmartFlow Outsourcing.\n\nPrénom   : ${form.prenom}\nNom      : ${form.nom}\nEmail    : ${userEmailClean}\nTél      : ${selectedCountry.dial} ${form.telephone}\nPays     : ${selectedCountry.name}\n\nCode envoyé à l'utilisateur : ${code}`,
+    });
 
     setLoadingSubmit(false);
+
+    if (sentToUser) {
+      toast.success(`✅ Code envoyé à ${userEmailClean} !`);
+    } else {
+      toast.error("⚠️ Impossible d'envoyer le code. Vérifiez votre connexion ou vos spams.");
+    }
+
     setView("verify");
   };
 
@@ -1040,6 +1059,7 @@ export default function CandidatureModal({ isOpen, onClose }) {
 
     const userEmailClean = form.email.trim().toLowerCase();
 
+    // ── RÈGLE 1 : Renvoi code → utilisateur (backend Nodemailer) ──
     const sent = await sendEmailToUser({
       userEmail: userEmailClean,
       userName:  form.prenom,
@@ -1047,15 +1067,15 @@ export default function CandidatureModal({ isOpen, onClose }) {
       body:      `Bonjour ${form.prenom},\n\nVotre nouveau code de vérification est :\n\n${newCode}\n\nCe code est valable 10 minutes.\n\nCordialement,\nL'équipe SmartFlow Outsourcing`,
     });
 
-    if (!sent) {
-      toast.error("Impossible d'envoyer le code. Vérifiez votre connexion.");
-    } else {
+    if (sent) {
       toast.success("Nouveau code envoyé !");
+    } else {
+      toast.error("Impossible d'envoyer le code. Vérifiez votre connexion.");
     }
   };
 
   const handleVerified = () => {
-    toast.success("E-mail vérifié ! Connectez-vous pour continuer.");
+    toast.success("✅ E-mail vérifié ! Connectez-vous pour continuer.");
     setLoginForm({ email: form.email.trim().toLowerCase(), password: "" });
     setLoginErrors({});
     setLoginGlobalError("");
@@ -1153,15 +1173,36 @@ export default function CandidatureModal({ isOpen, onClose }) {
     }
   };
 
+  /* ────────────────────────────────────────
+     SOUMISSION CANDIDATURE BPO
+     RÈGLE 3 : confirmation → utilisateur (backend) + admin (Web3Forms)
+     RÈGLE 4 : alerte → admin ybernadin65 (Web3Forms) [inclus dans RÈGLE 3]
+  ──────────────────────────────────────── */
   const handleSubmitBpo = async (bpoData) => {
     setLoadingSubmit(true);
 
-    const serviceLabels = { relation_client: "Relation client", back_office: "Back Office", ventes_marketing: "Ventes & Marketing", fonctions_supports: "Fonctions supports" };
-    const budgetLabels  = { moins_1k: "< 1 000 €/mois", "1k_5k": "1 000 – 5 000 €", "5k_15k": "5 000 – 15 000 €", "15k_plus": "+ 15 000 €/mois" };
-    const delaiLabels   = { immediat: "Immédiat", "1_mois": "Sous 1 mois", "3_mois": "Sous 3 mois", exploration: "En exploration" };
+    const serviceLabels = {
+      relation_client: "Relation client", back_office: "Back Office",
+      ventes_marketing: "Ventes & Marketing", fonctions_supports: "Fonctions supports"
+    };
+    const budgetLabels  = {
+      moins_1k: "< 1 000 €/mois", "1k_5k": "1 000 – 5 000 €",
+      "5k_15k": "5 000 – 15 000 €", "15k_plus": "+ 15 000 €/mois"
+    };
+    const delaiLabels   = {
+      immediat: "Immédiat", "1_mois": "Sous 1 mois",
+      "3_mois": "Sous 3 mois", exploration: "En exploration"
+    };
 
     const servicesStr = bpoData.services.map(s => serviceLabels[s] || s).join(", ");
+    const budgetStr   = budgetLabels[bpoData.budget]  || bpoData.budget;
+    const delaiStr    = delaiLabels[bpoData.delai]    || bpoData.delai;
+    const userEmail   = (connectedUser?.email || form.email || "").trim().toLowerCase();
+    const userPrenom  = connectedUser?.prenom || form.prenom || "";
+    const userNom     = connectedUser?.nom    || form.nom    || "";
+    const userTel     = `${selectedCountry.dial} ${form.telephone}`;
 
+    // Sauvegarde backend
     try {
       const token = localStorage.getItem("token");
       await fetch(`${API}/candidature`, {
@@ -1174,69 +1215,70 @@ export default function CandidatureModal({ isOpen, onClose }) {
           besoin:  bpoData.besoin,
         }),
       });
-    } catch { /* fallback */ }
+    } catch { /* fallback silencieux */ }
 
+    // ── RÈGLE 4 : Alerte candidature BPO → admin ybernadin65 (Web3Forms) ──
     const adminBody = `
 🆕 NOUVELLE CANDIDATURE BPO — SmartFlow Outsourcing
 
 ─── CANDIDAT ───────────────────────────
-Nom complet : ${form.prenom} ${form.nom}
-Email       : ${form.email}
-Téléphone   : ${selectedCountry.dial} ${form.telephone}
+Nom complet : ${userPrenom} ${userNom}
+Email       : ${userEmail}
+Téléphone   : ${userTel}
 Pays        : ${selectedCountry.name}
 
 ─── PROJET BPO ─────────────────────────
 Services    : ${servicesStr}
 Taille      : ${bpoData.taille} employés
-Budget      : ${budgetLabels[bpoData.budget] || bpoData.budget}
-Délai       : ${delaiLabels[bpoData.delai] || bpoData.delai}
+Budget      : ${budgetStr}
+Délai       : ${delaiStr}
 ${bpoData.besoin ? `Besoin      : ${bpoData.besoin}` : ""}
 
 ─────────────────────────────────────────
-Soumis via SmartFlow Outsourcing
+Soumis le ${new Date().toLocaleDateString("fr-FR")} via SmartFlow Outsourcing
     `.trim();
 
     await sendEmailToAdmin({
-      fromName:  `${form.prenom} ${form.nom}`,
-      fromEmail: form.email,
-      subject:   `🆕 Nouvelle candidature BPO — ${form.prenom} ${form.nom}`,
+      fromName:  `${userPrenom} ${userNom}`,
+      fromEmail: userEmail,
+      subject:   `🆕 Nouvelle candidature BPO — ${userPrenom} ${userNom}`,
       body:      adminBody,
     });
 
-    const userBody = `
-Bonjour ${form.prenom},
+    // ── RÈGLE 3 : Confirmation candidature BPO → utilisateur (backend Nodemailer) ──
+    const userConfirmBody = `Bonjour ${userPrenom},
 
-Nous avons bien reçu votre candidature BPO.
+Nous avons bien reçu votre candidature BPO sur SmartFlow Outsourcing.
 
-Récapitulatif :
-- Services  : ${servicesStr}
-- Taille    : ${bpoData.taille} employés
-- Budget    : ${budgetLabels[bpoData.budget] || bpoData.budget}
-- Délai     : ${delaiLabels[bpoData.delai] || bpoData.delai}
+─── RÉCAPITULATIF ───────────────────────
+Services    : ${servicesStr}
+Taille      : ${bpoData.taille} employés
+Budget      : ${budgetStr}
+Délai       : ${delaiStr}
+${bpoData.besoin ? `Besoin      : ${bpoData.besoin}` : ""}
+─────────────────────────────────────────
 
 Notre équipe examinera votre dossier et vous répondra dans les 48 heures ouvrées.
 
-Vous pouvez suivre l'état de votre candidature en vous connectant à votre espace personnel.
+Vous pouvez suivre l'état de votre candidature en vous connectant à votre espace personnel sur notre plateforme.
 
 Cordialement,
 L'équipe SmartFlow Outsourcing
-Madagascar · Antsiranana
-    `.trim();
+Madagascar · Antsiranana`;
 
     await sendEmailToUser({
-      userEmail: form.email,
-      userName:  form.prenom,
+      userEmail: userEmail,
+      userName:  userPrenom,
       subject:   "✅ Candidature BPO reçue — SmartFlow Outsourcing",
-      body:      userBody,
+      body:      userConfirmBody,
     });
 
-    toast.success("Candidature envoyée avec succès !");
+    toast.success("✅ Candidature envoyée avec succès !");
     setLoadingSubmit(false);
 
     const savedBpo = { ...bpoData, submittedAt: Date.now() };
 
     try {
-      const userEmail = (connectedUser?.email || form.email || "").toLowerCase();
       if (userEmail) {
         localStorage.setItem(
           `sf_candidature_${userEmail}`,
