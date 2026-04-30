@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Title from './Title'
 import assets from '../assets/assets'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import { motion } from 'motion/react'
 
 function ContactUs() {
@@ -17,22 +17,21 @@ function ContactUs() {
         const message = formData.get("message");
 
         try {
-            const response = await fetch("https://api.resend.com/emails", {
+            const response = await fetch("/api/send", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer re_VfSHgCGn_JqFvprvS31wNhAwWG9DpcAD2"
                 },
                 body: JSON.stringify({
-                    from:    "SmartFlow Outsourcing <onboarding@resend.dev>",
-                    to:      ["ybernadin65@gmail.com"],
+                    name,
+                    email,
                     subject: `Nouveau message de ${name}`,
-                    html:    `<p><b>Nom :</b> ${name}</p><p><b>Email :</b> ${email}</p><p><b>Message :</b><br/>${message}</p>`
+                    message,
                 })
             });
 
             if (response.ok) {
-                toast.success("Message envoyé avec succès ! ✅");
+                toast.success("Message envoyé avec succès ! ");
                 event.target.reset();
             } else {
                 const err = await response.json();
@@ -55,7 +54,6 @@ function ContactUs() {
             id='Contactez-nous'
             className='flex flex-col items-center gap-7 px-4 sm:px-12 lg:px-24 xl:px-40 pt-30 text-gray-700 dark:text-white'>
 
-            <Toaster />
             <Title Title='Contactez-nous' desc='' />
 
             <motion.form

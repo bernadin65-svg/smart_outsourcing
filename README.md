@@ -34,7 +34,7 @@
 
 ##  Fonctionnalités
 
--  **Gestion des utilisateurs** — Rôles distincts : clients, agents, administrateurs
+- **Gestion des utilisateurs** — Rôles distincts : clients, agents, administrateurs
 - **Gestion des processus** — Création, suivi et clôture des missions BPO
 - **Notifications par email** — Alertes automatiques via Gmail SMTP
 - **Rapports & Statistiques** — Suivi des performances et des délais
@@ -160,7 +160,7 @@ npm run lint
 ```
 externalisation-intelligente/
 ├── public/                  # Fichiers statiques
-├── src/                     # Code source principal
+├─ src/                     # Code source principal
 │   ├── assets/              # Images, icônes, polices
 │   ├── components/          # Composants React réutilisables
 │   ├── pages/               # Pages de l'application

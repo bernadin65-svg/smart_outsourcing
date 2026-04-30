@@ -7,22 +7,37 @@ const userRoutes = require("./routes/userRoutes");
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// ── Middlewares globaux ──
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174", "https://externalisation-bpo.vercel.app"],
   credentials: true
 }));
-app.use(express.json()); // permet de lire le JSON des requêtes
+app.use(express.json());
 
-// ── Routes ──
 app.use("/api/users", userRoutes);
 
-// ── Test rapide ──
+app.post("/api/send", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from:    "SmartFlow Outsourcing <onboarding@resend.dev>",
+      to:      ["ybernadin65@gmail.com"],
+      replyTo: email,
+      subject: subject,
+      html: `<p><b>De :</b> ${name} (${email})</p><p>${message}</p>`,
+    });
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Erreur Resend:", err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 app.get("/", (req, res) => {
   res.json({ message: "SmartFlow API fonctionne ! ✅" });
 });
 
-// ── Démarrage ──
 app.listen(PORT, () => {
   console.log(`🚀 Serveur sur http://localhost:${PORT}`);
 });
