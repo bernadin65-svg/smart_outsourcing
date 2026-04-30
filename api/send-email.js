@@ -10,7 +10,8 @@ export default async function handler(req, res) {
   try {
     await resend.emails.send({
       from:    'SmartFlow Outsourcing <onboarding@resend.dev>',
-      to:      [email],
+      to:      ['ybernadin65@gmail.com'],
+      replyTo: email,
       subject: subject,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:32px;border-radius:12px;">
@@ -19,6 +20,7 @@ export default async function handler(req, res) {
             <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:6px 0 0;">Plateforme BPO de référence à Madagascar</p>
           </div>
           <div style="background:#ffffff;padding:28px;border-radius:10px;border:1px solid #e5e7eb;">
+            <p style="font-family:Arial,sans-serif;font-size:13px;color:#6b7280;margin:0 0 12px;">De : <strong>${name}</strong> &lt;${email}&gt;</p>
             <pre style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937;white-space:pre-wrap;line-height:1.7;margin:0;">${message}</pre>
           </div>
           <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:20px;">
