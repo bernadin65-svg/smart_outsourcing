@@ -15,6 +15,7 @@ app.use(express.json());
 
 app.use("/api/users", userRoutes);
 
+// ── Route Email ContactUs ──
 app.post("/api/send", async (req, res) => {
   const { name, email, subject, message } = req.body;
   try {
@@ -26,6 +27,25 @@ app.post("/api/send", async (req, res) => {
       replyTo: email,
       subject: subject,
       html: `<p><b>De :</b> ${name} (${email})</p><p>${message}</p>`,
+    });
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Erreur Resend:", err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Route Email Utilisateur (CandidatureModal) ──
+app.post("/api/send-email", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from:    "SmartFlow Outsourcing <onboarding@resend.dev>",
+      to:      [email],
+      subject: subject,
+      html:    `<p>${message.replace(/\n/g, "<br/>")}</p>`,
     });
     res.status(200).json({ success: true });
   } catch (err) {
